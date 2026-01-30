@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swiggy Sentiment Analysis - Standalone</title>
+    <!-- React and Babel CDNs -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Axios for API calls -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <!-- Tailwind CSS for rapid premium styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+
+        .swiggy-orange {
+            color: #fc8019;
+        }
+
+        .swiggy-bg {
+            background: linear-gradient(135deg, #fc8019, #ff5c00);
+        }
+
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function App() {
+            const [review, setReview] = useState('');
+            const [result, setResult] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState(null);
+
+            const handleAnalyze = async () => {
+                if (!review.trim()) return;
+                setLoading(true);
+                setError(null);
+                try {
+                    const response = await axios.post('http://localhost:5000/predict', { review });
+                    setResult(response.data);
+                } catch (err) {
+                    setError('Could not connect to the backend server. Make sure app.py is running on port 5000.');
+                    console.error(err);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const getSentimentColor = (sentiment) => {
+                switch (sentiment) {
+                    case 'Positive': return '#10b981';
+                    case 'Negative': return '#ef4444';
+                    case 'Neutral': return '#f59e0b';
+                    default: return '#6b7280';
+                }
+            };
+
+            return (
+                <div className="max-w-4xl mx-auto px-4 py-12">
+                    <header className="text-center mb-12">
+                        <div className="flex items-center justify-center gap-3 mb-2">
+                            <i data-lucide="message-square" className="w-10 h-10 swiggy-orange"></i>
+                            <h1 className="text-4xl font-extrabold">Swiggy Sentiment <span className="swiggy-orange">Analysis</span></h1>
+                        </div>
+                        <p className="text-slate-400">Premium AI-Powered Sentiment Classifier</p>
+                    </header>
+
+                    <main className="space-y-8">
+                        <section className="glass p-8 rounded-3xl shadow-2xl">
+                            <h2 className="text-xl font-semibold mb-2 text-white">Enter Your Review</h2>
+                            <p className="text-slate-400 mb-6">Tell us about your experience with Swiggy</p>
+                            <textarea
+                                className="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-orange-500 transition-colors mb-6"
+                                placeholder="e.g., The delivery boy was very polite and the food arrived hot!"
+                                value={review}
+                                onChange={(e) => setReview(e.target.value)}
+                                rows="5"
+                            ></textarea>
+                            <button
+                                onClick={handleAnalyze}
+                                disabled={loading || !review.trim()}
+                                className="w-full swiggy-bg text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-lg shadow-lg shadow-orange-500/20"
+                            >
+                                {loading ? 'Analyzing...' : 'Analyze Sentiment'}
+                                <i data-lucide="send" className="w-5 h-5"></i>
+                            </button>
+                        </section>
+
+                        {error && (
+                            <div className="bg-red-500/10 border border-red-500 text-red-500 p-4 rounded-xl flex items-center gap-3">
+                                <i data-lucide="alert-circle" className="w-5 h-5"></i>
+                                {error}
+                            </div>
+                        )}
+
+                        {result && (
+                            <section
+                                className="animate-fade-in glass p-8 rounded-3xl border-l-8 transition-all"
+                                style={{ borderColor: getSentimentColor(result.sentiment) }}
+                            >
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-2xl font-bold">Prediction Result</h3>
+                                    <span
+                                        className="px-4 py-1 rounded-full text-sm font-bold uppercase"
+                                        style={{ backgroundColor: getSentimentColor(result.sentiment) }}
+                                    >
+                                        {result.sentiment}
+                                    </span>
+                                </div>
+                                <p className="text-slate-300 italic text-xl mb-8 leading-relaxed">"{result.review}"</p>
+
+                                {result.probabilities && (
+                                    <div className="space-y-4">
+                                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Confidence Scores</h4>
+                                        {Object.entries(result.probabilities).map(([label, prob]) => (
+                                            <div key={label} className="space-y-2">
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="font-semibold text-slate-300">{label}</span>
+                                                    <span className="text-slate-400">{(prob * 100).toFixed(1)}%</span>
+                                                </div>
+                                                <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full rounded-full transition-all duration-1000"
+                                                        style={{
+                                                            width: `${(prob * 100).toFixed(1)}%`,
+                                                            backgroundColor: getSentimentColor(label)
+                                                        }}
+                                                    ></div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {result.tokens && result.tokens.length > 0 && (
+                                    <div className="mt-8 pt-8 border-t border-slate-700">
+                                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">Word Vector Weights (TF-IDF)</h4>
+                                        <div className="flex flex-wrap gap-4 items-end min-h-[150px] bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
+                                            {result.tokens.map((token, idx) => (
+                                                <div key={idx} className="flex flex-col items-center flex-1 min-w-[60px] max-w-[100px]">
+                                                    <div
+                                                        className="w-full swiggy-bg rounded-t-lg transition-all duration-1000"
+                                                        style={{
+                                                            height: `${Math.max(token.weight * 300, 20)}px`,
+                                                            opacity: 0.6 + (token.weight * 0.4)
+                                                        }}
+                                                    ></div>
+                                                    <span className="text-[10px] mt-2 text-slate-400 font-bold truncate w-full text-center">
+                                                        {token.word}
+                                                    </span>
+                                                    <span className="text-[9px] text-slate-500">
+                                                        {token.weight.toFixed(3)}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <p className="text-[10px] text-slate-500 mt-3 text-center italic">
+                                            *These bars show which words the ML model focused on to make its prediction.
+                                        </p>
+                                    </div>
+                                )}
+                            </section>
+                        )}
+
+                        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="bg-slate-800/40 p-6 rounded-2xl flex items-start gap-4">
+                                <i data-lucide="activity" className="w-8 h-8 swiggy-orange mt-1"></i>
+                                <div>
+                                    <h4 className="font-bold text-white mb-1">SVM Model</h4>
+                                    <p className="text-sm text-slate-400">High-performance Support Vector Machine trained on Swiggy reviews.</p>
+                                </div>
+                            </div>
+                            <div className="bg-slate-800/40 p-6 rounded-2xl flex items-start gap-4">
+                                <i data-lucide="bar-chart-3" className="w-8 h-8 swiggy-orange mt-1"></i>
+                                <div>
+                                    <h4 className="font-bold text-white mb-1">Visualizations</h4>
+                                    <p className="text-sm text-slate-400">5 ML plots generated to analyze data distribution and model validity.</p>
+                                </div>
+                            </div>
+                        </section>
+                    </main>
+
+                    <footer className="mt-16 text-center text-slate-600 text-sm">
+                        <p>© 2026 Sentiment Analysis Lab • Built for Project Purpose</p>
+                    </footer>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+
+        // Initialize icons after React renders
+        setTimeout(() => {
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+        }, 100);
+    </script>
+</body>
+
+</html>
